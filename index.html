@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lyrics and Chords</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .form-container {
+            margin-bottom: 30px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+        }
+
+        .song {
+            margin-top: 20px;
+            font-family: monospace;
+            white-space: pre;
+        }
+
+        .chord {
+            font-weight: bold;
+            color: #007acc;
+        }
+
+        .transpose-buttons {
+            margin-top: 10px;
+        }
+
+        button {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Lyrics and Chords</h1>
+
+    <div class="form-container">
+        <h2>Submit a Song</h2>
+        <textarea id="songInput" placeholder="Enter your chords and lyrics on alternating lines (chords first, lyrics second.)"></textarea>
+        <button onclick="submitSong()">Submit</button>
+    </div>
+
+    <div id="songContainer">
+        <h2>Submitted Songs</h2>
+    </div>
+
+    <script>
+        const notesSharp = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const notesFlat = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+        function transposeChord(chord, steps) {
+            // Handle slash chords (e.g., Fm7/B)
+            if (chord.includes('/')) {
+                const parts = chord.split('/');
+                return transposeChord(parts[0], steps) + '/' + transposeChord(parts[1], steps);
+            }
+
+            // Match the root note and suffix (e.g., "A#m7" -> "A#", "m7")
+            const match = chord.match(/^([A-G](#|b)?)(.*)$/);
+            if (!match) return chord;
+
+            const [_, root, accidental, suffix] = match;
+
+            // Find the index of the root note in the notes array
+            let index = notesSharp.indexOf(root) !== -1
+                ? notesSharp.indexOf(root)
+                : notesFlat.indexOf(root);
+
+            if (index === -1) return chord;
+
+            // Transpose the root note
+            index = (index + steps + notesSharp.length) % notesSharp.length;
+
+            // Determine whether to use sharp or flat notation
+            const newRoot = notesSharp.includes(root) ? notesSharp[index] : notesFlat[index];
+
+            // Return the transposed chord
+            return newRoot + suffix;
+        }
+
+        function transposeSong(songElement, steps) {
+            const chordLines = songElement.querySelectorAll('.chord');
+            chordLines.forEach(chordLine => {
+                chordLine.textContent = chordLine.textContent.split(/\s+/)
+                    .map(chord => transposeChord(chord, steps))
+                    .join('    '); // Retain spacing
+            });
+        }
+
+        function parseSong(input) {
+            const lines = input.split('\n');
+            const parsedSong = [];
+
+            for (let i = 0; i < lines.length; i += 2) {
+                const chords = lines[i] || '';
+                const lyrics = lines[i + 1] || '';
+                parsedSong.push({ chords, lyrics });
+            }
+
+            return parsedSong;
+        }
+
+        function renderSong(parsedSong) {
+            const container = document.createElement('div');
+            container.classList.add('song');
+
+            parsedSong.forEach(({ chords, lyrics }) => {
+                const chordLine = document.createElement('div');
+                const lyricLine = document.createElement('div');
+
+                chordLine.classList.add('chord');
+                chordLine.textContent = chords;
+                lyricLine.textContent = lyrics;
+
+                container.appendChild(chordLine);
+                container.appendChild(lyricLine);
+            });
+
+            // Add transposition buttons
+            const transposeContainer = document.createElement('div');
+            transposeContainer.classList.add('transpose-buttons');
+
+            const upButton = document.createElement('button');
+            upButton.textContent = 'Transpose Up';
+            upButton.onclick = () => transposeSong(container, 1);
+
+            const downButton = document.createElement('button');
+            downButton.textContent = 'Transpose Down';
+            downButton.onclick = () => transposeSong(container, -1);
+
+            transposeContainer.appendChild(upButton);
+            transposeContainer.appendChild(downButton);
+            container.appendChild(transposeContainer);
+
+            return container;
+        }
+
+        function submitSong() {
+            const input = document.getElementById('songInput').value;
+            if (!input.trim()) return;
+
+            const parsedSong = parseSong(input);
+            const songElement = renderSong(parsedSong);
+
+            document.getElementById('songContainer').appendChild(songElement);
+            document.getElementById('songInput').value = '';
+        }
+    </script>
+</body>
+</html>
